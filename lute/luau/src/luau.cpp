@@ -2637,6 +2637,45 @@ int luau_parseexpr(lua_State* L)
     return 1;
 }
 
+int luau_parsenosync(lua_State* L)
+{
+    std::string source = luaL_checkstring(L, 1);
+
+    StatResult result = parse(source);
+
+    auto& errors = result.parseResult.errors;
+
+    if (!errors.empty())
+    {
+        std::vector<std::string> locationStrings{};
+        locationStrings.reserve(errors.size());
+
+        size_t size = 0;
+        for (auto error : errors)
+        {
+            locationStrings.emplace_back(Luau::toString(error.getLocation()));
+            size += locationStrings.back().size() + 2 + error.getMessage().size() + 1;
+        }
+
+        std::string fullError;
+        fullError.reserve(size);
+
+        for (size_t i = 0; i < errors.size(); i++)
+        {
+            fullError += locationStrings[i];
+            fullError += ": ";
+            fullError += errors[i].getMessage();
+            fullError += "\n";
+        }
+
+        luaL_error(L, "parsing failed:\n%s", fullError.c_str());
+    }
+
+    // Return only line count - no AST serialization
+    lua_pushnumber(L, result.parseResult.lines);
+    return 1;
+}
+
 inline int check_int_field(lua_State* L, int obj_idx, const char* field_name, int default_value)
 {
     if (lua_getfield(L, obj_idx, field_name) == LUA_TNIL)
