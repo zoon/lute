@@ -17,8 +17,14 @@ local SIZEOF = {
 	ARRAY_SLOT = 16, -- sizeof(TValue) in the array part
 }
 
+local args = { ... }
+local source_path = args[2] or "tests/perf/parsing/holy.src"
+local short_name = source_path:match("([^/\\]+)%.[%w%.]+$")
+
+print(`Reading source from: {source_path}`)
+local source = fs.readfiletostring(source_path)
+
 -- Read holy.luau once
-local source = fs.readfiletostring("tests/perf/parsing/holy.src")
 local ast = parser.parse(source)
 
 -- Statistics
@@ -230,7 +236,7 @@ local total_bytes = estimate_node(ast, visited)
 total_bytes += stats.total_string_bytes
 
 -- Print results
-print("=== Memory Profile for holy.luau ===\n")
+print(`=== Memory Profile for '{short_name}' ===\n`)
 print(string.format("Total estimated memory: %.2f MB", total_bytes / KK))
 print(string.format("Measured memory (gcinfo): %.2f MB\n", gcinfo() / 1024))
 
