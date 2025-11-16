@@ -22,6 +22,14 @@ export type createdirectoryoptions = {
 	makeparents: boolean?,
 }
 
+export type removedirectoryoptions = {
+	recursive: boolean?,
+}
+
+export type walkoptions = {
+	recursive: boolean?,
+}
+
 function fslib.open(path: pathlike, mode: handlemode?): filehandle
 	return fs.open(pathlib.format(path), mode)
 end
@@ -114,6 +122,52 @@ function fslib.createdirectory(path: pathlike, options: createdirectoryoptions?)
 		end
 	else
 		fs.mkdir(pathlib.format(path))
+	end
+end
+
+function fslib.removedirectory(path: pathlike, options: removedirectoryoptions?): ()
+	if options and options.recursive then
+		-- Recursively delete all contents first
+		if fslib.exists(path) and fslib.type(path) == "dir" then
+			local entries = fslib.listdir(path)
+			for _, entry in entries do
+				local entryPath = pathlib.join(path, entry.name)
+				if entry.type == "dir" then
+					fslib.removedirectory(entryPath, { recursive = true })
+				else
+					fslib.remove(entryPath)
+				end
+			end
+			fs.rmdir(pathlib.format(path))
+		end
+	else
+		fs.rmdir(pathlib.format(path))
+	end
+end
+
+-- Note: for loops do not support yielding generalized iterators, so we cannot use fs.walk as `for path in fs.walk(...) do` directly. A while loop can be used instead.
+function fslib.walk(path: pathlike, options: walkoptions?): () -> path?
+	local queue = { pathlib.parse(path) }
+
+	return function()
+		while #queue > 0 do
+			local current = table.remove(queue, 1)
+			if not current then
+				return nil
+			end
+
+			if fslib.type(current) == "dir" and options and options.recursive then
+				local entries = fslib.listdir(current)
+				for _, entry in entries do
+					local fullPath = pathlib.join(current, entry.name)
+					table.insert(queue, fullPath)
+				end
+			end
+
+			return current
+		end
+
+		return nil
 	end
 end
 

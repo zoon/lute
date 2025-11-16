@@ -41,7 +41,7 @@ test.suite("AST Query", function(suite)
 		for _, _ in replacements do
 			count += 1
 		end
-		assert.eq(count, 6) -- 4 non-nil replacements + print + __root
+		assert.eq(count, 4) -- 4 non-nil replacements
 	end)
 
 	suite:case("map", function(assert)
@@ -108,6 +108,22 @@ test.suite("AST Query", function(suite)
 		assert.eq(num.kind, "expr")
 		assert.eq(num.tag, "number")
 		assert.eq((num :: syntax.AstExprConstantNumber).value, 2)
+	end)
+
+	suite:case("select_tokens", function(assert)
+		local ast = syntax.parse("local x = 1 or nil")
+		-- verify that query doesn't doubly count tokens
+		local queryResult = query.selectFromRoot(ast, utils.isToken)
+		assert.eq(#queryResult.nodes, 6)
+		queryResult:forEach(function(node)
+			assert.eq(node.istoken, true)
+		end)
+		local constNums = query.selectFromRoot(ast, utils.isExprConstantNumber)
+		assert.eq(#constNums.nodes, 1)
+		local constNils = query.selectFromRoot(ast, utils.isExprConstantNil)
+		assert.eq(#constNils.nodes, 1)
+		local baseTokens = query.selectFromRoot(ast, utils.isBaseToken)
+		assert.eq(#baseTokens.nodes, 4)
 	end)
 end)
 
